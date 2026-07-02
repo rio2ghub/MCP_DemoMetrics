@@ -1,0 +1,87 @@
+name: Python Guardrails CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Run pre-commit hooks
+      run: |
+        pre-commit run --all-files
+
+    - name: Run type checking with mypy
+      run: |
+        mypy src/
+
+    - name: Run security checks with bandit
+      run: |
+        bandit -r src/ -c .bandit
+
+    - name: Check dependencies for vulnerabilities
+      run: |
+        safety check --file requirements.txt
+
+    - name: Run CodeReview Agent analysis
+      run: |
+        python code_review.py
+
+    - name: Run tests with pytest
+      run: |
+        pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+
+    - name: Run pylint
+      run: |
+        pylint src/ --exit-zero
+
+    - name: Run flake8
+      run: |
+        flake8 src/
+
+    - name: Check code formatting with black
+      run: |
+        black --check src/ tests/

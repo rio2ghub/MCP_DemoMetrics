@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  mcp-demo:
+    build: .
+    container_name: mcp-demo-metrics
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
