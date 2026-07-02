@@ -1,87 +1,105 @@
 name: Python Guardrails CI/CD
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.9', '3.10', '3.11']
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
 
-    - name: Run pre-commit hooks
-      run: |
-        pre-commit run --all-files
+      - name: Run pre-commit hooks
+        run: |
+          pre-commit run --all-files
 
-    - name: Run type checking with mypy
-      run: |
-        mypy src/
+      - name: Run type checking with mypy
+        run: |
+          mypy src/
 
-    - name: Run security checks with bandit
-      run: |
-        bandit -r src/ -c .bandit
+      - name: Run security checks with bandit
+        run: |
+          bandit -r src/ -c .bandit
 
-    - name: Check dependencies for vulnerabilities
-      run: |
-        safety check --file requirements.txt
+      - name: Check dependencies for vulnerabilities
+        run: |
+          safety check --file requirements.txt
 
-    - name: Run CodeReview Agent analysis
-      run: |
-        python code_review.py
+      - name: Run CodeReview Agent analysis
+        run: |
+          python code_review.py
 
-    - name: Run tests with pytest
-      run: |
-        pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+      - name: Run tests with pytest
+        run: |
+          pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
 
   code-quality:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements-dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
 
-    - name: Run pylint
-      run: |
-        pylint src/ --exit-zero
+      - name: Run pylint
+        run: |
+          pylint src/ --exit-zero
 
-    - name: Run flake8
-      run: |
-        flake8 src/
+      - name: Run flake8
+        run: |
+          flake8 src/
 
-    - name: Check code formatting with black
-      run: |
-        black --check src/ tests/
+      - name: Check code formatting with black
+        run: |
+          black --check src/ tests/
