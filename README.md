@@ -1,6 +1,6 @@
 # MCP Demo Metrics - Python Project with Guardrails
 
-Senior Executive Demo showcasing MCP Server Client in Python with comprehensive quality guardrails, seaborn visualizations, Docker containerization, and GitHub Actions CI/CD.
+Showcasing MCP Server Client in Python with comprehensive quality guardrails, seaborn visualizations, Docker containerization, and GitHub Actions CI/CD.
 
 ---
 
